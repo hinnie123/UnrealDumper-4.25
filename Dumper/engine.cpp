@@ -5,6 +5,8 @@
 #include "utils.h"
 #include "wrappers.h"
 
+#include "dumpshost.h"
+
 Offsets offsets;
 
 ansi_fn Decrypt_ANSI = nullptr;
@@ -535,6 +537,10 @@ STATUS EngineInit(std::string game, void* image) {
   );
 
   if (found != 7) return STATUS::ENGINE_FAILED;
+
+  // You can add any other offsets by scanning them above and calling AddOffset.
+  DumpsHost::AddOffset("GNames", (uint64)names - (uint64)image);
+  DumpsHost::AddOffset("GObjects", (uint64)objects - (uint64)image);
 
   NamePoolData = *(decltype(NamePoolData)*)names;
   ObjObjects = *(decltype(ObjObjects)*)objects;

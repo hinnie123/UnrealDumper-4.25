@@ -6,6 +6,9 @@
 #include "memory.h"
 #include "wrappers.h"
 
+#include "utils.h"
+#include "dumpshost.h"
+
 std::pair<bool, uint16> UE_FNameEntry::Info() const {
   auto info = Read<uint16>(object + offsets.FNameEntry.Info);
   auto len = info >> offsets.FNameEntry.LenBit;
@@ -1082,6 +1085,18 @@ void UE_UPackage::GenerateFunction(UE_UFunction fn, Function *out) {
   if (out->CppName.size() == 0) {
     out->CppName = "void " + fn.GetName();
   }
+
+  // Dumps.host related
+  out->DumpsHostName = out->CppName;
+  if (out->Flags.find("Static") != std::string::npos)
+    out->DumpsHostName = "static " + out->DumpsHostName;
+
+  out->DumpsHostName = ReplaceAll(out->DumpsHostName, "struct ", "");
+  out->DumpsHostName = ReplaceAll(out->DumpsHostName, "enum class ", "");
+
+  out->DumpsHostParams = out->Params;
+  out->DumpsHostParams = ReplaceAll(out->DumpsHostParams, "struct ", "");
+  out->DumpsHostParams = ReplaceAll(out->DumpsHostParams, "enum class ", "");
 }
 
 void UE_UPackage::GenerateStruct(UE_UStruct object, std::vector<Struct>& arr, bool findPointers) {
@@ -1094,10 +1109,18 @@ void UE_UPackage::GenerateStruct(UE_UStruct object, std::vector<Struct>& arr, bo
   s.FullName = object.GetFullName();
   s.CppName = "struct " + object.GetCppName();
 
+  // Dumps.host related
+  s.DumpsHostName = object.GetCppName();
+
   auto super = object.GetSuper();
   if (super) {
     s.CppName += " : " + super.GetCppName();
     s.Inherited = super.GetSize();
+
+    // Dumps.host related
+    nlohmann::json j;
+    j[s.DumpsHostName] = super.GetCppName();
+    DumpsHost::AddInheritInfo(j);
   }
 
   uint32 offset = s.Inherited;
@@ -1114,6 +1137,12 @@ void UE_UPackage::GenerateStruct(UE_UStruct object, std::vector<Struct>& arr, bo
     m->Type = type.second;
     m->Name = prop->GetName();
     m->Offset = prop->GetOffset();
+
+    // Dumps.host related
+    m->DumpsHostName = m->Name;
+    m->DumpsHostType = m->Type;
+    m->DumpsHostType = ReplaceAll(m->DumpsHostType, "struct ", "");
+    m->DumpsHostType = ReplaceAll(m->DumpsHostType, "enum class ", "");
 
     if (m->Offset > offset) {
       UE_UPackage::FillPadding(object, s.Members, offset, bitOffset, m->Offset, findPointers);
@@ -1219,6 +1248,10 @@ void UE_UPackage::GenerateEnum(UE_UEnum object, std::vector<Enum> &arr) {
 
   e.CppName = "enum class " + object.GetName() + type;
 
+  // Dumps.host related
+  e.DumpsHostName = object.GetName();
+  e.DumpsHostType = max > 256 ? "int32_t" : "uint8_t";
+
   if (e.Members.size()) {
     arr.push_back(e);
   }
@@ -1303,6 +1336,46 @@ bool UE_UPackage::Save(const fs::path &dir, bool spacing) {
   }
 
   if (Classes.size()) {
+    // Dumps.host specific
+    for (auto& s : Classes) {
+      if (!s.Members.empty()) {
+        nlohmann::json members = nlohmann::json::array();
+
+        std::sort(s.Members.begin(), s.Members.end(), [](const auto& lhs, const auto& rhs) {
+              return lhs.Offset < rhs.Offset;
+          });
+
+        for (auto& m : s.Members) {
+          // Padding
+          if (m.DumpsHostName.empty() || m.DumpsHostType.empty())
+            continue;
+
+          nlohmann::json a;
+          a[m.DumpsHostName] = std::make_tuple(m.Offset, m.DumpsHostType);
+          members.push_back(a);
+        }
+
+        nlohmann::json j;
+        j[s.DumpsHostName] = members;
+        DumpsHost::AddClass(j);
+      }
+
+      if (!s.Functions.empty()) {
+        nlohmann::json functions = nlohmann::json::array();
+
+        for (auto& f : s.Functions) {
+          nlohmann::json a;
+          a[f.DumpsHostName + "(" + f.DumpsHostParams + ")"] = std::make_tuple(f.Func - Base, f.Flags);
+          functions.push_back(a);
+        }
+
+        nlohmann::json j;
+        j[s.DumpsHostName] = functions;
+        DumpsHost::AddFunction(j);
+      }
+    }
+
+    // Original UnrealDumper code
     File file(dir / (packageName + "_classes.h"), "w");
     if (!file) {
       return false;
@@ -1315,6 +1388,56 @@ bool UE_UPackage::Save(const fs::path &dir, bool spacing) {
   }
 
   if (Structures.size() || Enums.size()) {
+    // Dumps.host specific
+    if (Structures.size()) {
+      for (auto& s : Structures) {
+        if (!s.Members.empty()) {
+          nlohmann::json members = nlohmann::json::array();
+
+          std::sort(s.Members.begin(), s.Members.end(), [](const auto& lhs, const auto& rhs) {
+              return lhs.Offset < rhs.Offset;
+            });
+
+          for (auto& m : s.Members) {
+            // Padding
+            if (m.DumpsHostName.empty() || m.DumpsHostType.empty())
+              continue;
+
+            nlohmann::json a;
+            a[m.DumpsHostName] = std::make_tuple(m.Offset, m.DumpsHostType);
+            members.push_back(a);
+          }
+
+          nlohmann::json j;
+          j[s.DumpsHostName] = members;
+          DumpsHost::AddStruct(j);
+        }
+      }
+    }
+
+    // Dumps.host specific
+    if (Enums.size()) {
+      for (auto& e : Enums) {
+        if (!e.Members.empty()) {
+          nlohmann::json members = nlohmann::json::array();
+
+          auto lastIdx = e.Members.size();
+          for (auto i = 0; i < lastIdx; i++) {
+            auto& m = e.Members.at(i);
+
+            nlohmann::json a;
+            a[m.substr(0, m.find(" = "))] = std::make_tuple(i, e.DumpsHostType);
+            members.push_back(a);
+          }
+
+          nlohmann::json j;
+          j[e.DumpsHostName] = members;
+          DumpsHost::AddEnum(j);
+        }
+      }
+    }
+
+    // Original UnrealDumper code
     File file(dir / (packageName + "_struct.h"), "w");
     if (!file) {
       return false;

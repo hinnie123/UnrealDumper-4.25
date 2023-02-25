@@ -41,6 +41,9 @@
     <ClCompile Include="dumper.cpp">
       <Filter>sources</Filter>
     </ClCompile>
+    <ClCompile Include="dumpshost.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine.h">
@@ -63,6 +66,12 @@
     </ClInclude>
     <ClInclude Include="dumper.h">
       <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="dumpshost.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\json.hpp">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

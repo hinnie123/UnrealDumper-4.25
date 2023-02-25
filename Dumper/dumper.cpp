@@ -6,6 +6,8 @@
 #include "utils.h"
 #include "wrappers.h"
 
+#include "dumpshost.h"
+
 Dumper::~Dumper() {
   if (Image) VirtualFree(Image, 0, MEM_RELEASE);
 }
@@ -191,6 +193,8 @@ STATUS Dumper::Dump() {
         fmt::print("Unsaved empty packages: [ {} ]\n", unsaved);
       }
     }
+
+    DumpsHost::Dump(Directory);
   }
   return STATUS::SUCCESS;
 }

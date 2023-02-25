@@ -2,6 +2,8 @@
 #include <functional>
 #include "defs.h"
 
+#include <string>
+
 bool Compare(uint8* data, uint8* sig, uint32 size);
 
 uint8* FindSignature(void* start, void* end, const char* sig, uint32 size);
@@ -13,3 +15,5 @@ void IterateExSections(void* data, std::function<bool(void*, void*)> callback);
 uint32 GetProccessPath(uint32 pid, wchar_t* processName, uint32 size);
 
 uint64 GetTime();
+
+std::string ReplaceAll(std::string str, const std::string& from, const std::string& to);

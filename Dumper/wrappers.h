@@ -574,6 +574,10 @@ private:
     std::string Name;
     uint32 Offset = 0;
     uint32 Size = 0;
+
+    // Dumps.host related
+    std::string DumpsHostType;
+    std::string DumpsHostName;
   };
   struct Function {
     std::string FullName;
@@ -581,6 +585,10 @@ private:
     std::string Params;
     std::string Flags;
     uint64 Func = 0;
+
+	  // Dumps.host related
+	  std::string DumpsHostName;
+	  std::string DumpsHostParams;
   };
   struct Struct {
     std::string FullName;
@@ -589,11 +597,18 @@ private:
     uint32 Size = 0;
     std::vector<Member> Members;
     std::vector<Function> Functions;
+
+    // Dumps.host related
+    std::string DumpsHostName;
   };
   struct Enum {
     std::string FullName;
     std::string CppName;
     std::vector<std::string> Members;
+
+    // Dumps.host related
+    std::string DumpsHostName;
+    std::string DumpsHostType;
   };
 
 private:
