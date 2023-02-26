@@ -1,30 +1,5 @@
-### Edit engine.cpp in order to add support for your game
-### Currently supported games:
- - Fortnite
- - Rogue Company
- - Dead By Daylight
- - Witch It
- - Brickadia
- - POLYGON
- - SCUM
- - Scavengers
- - The Isle
- - Splitgate
- - Dauntless
- - Boundary
- - The Cycle: Frontier
-### Supported engine versions: 
-- UE 4.23-4.27
-### Usage:
-```
-.\Dumper.exe [option] [option]
-```
-```
-Options:
-  '-h' - prints help message
-  '-p' - dump only names and objects
-  '-w' - wait for input
-  '-f packageNameHere' - specifies package where we should look for pointers in paddings (can take a lot of time)
-```
-### Todo:
-- Analyze functions to get offsets to referenced fields
+### About
+This fork of the original UnrealDumper adds support for the dumps.host dumps format. After dumping a game there will be a "Dumps.host" folder in the output directory, with JSON files that can be uploaded to dumps.host.
+
+### Adding a dump to dumps.host
+Go to https://dumps.host/profile and click "Add custom dump". Give the dump an url and upload the dumped JSON files. After adding a dump wait for me to manually verify it, so I can make sure no one is trying to do some funny business.
